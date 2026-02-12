@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Communications VFO Configuration Tool</title>
+    <style>
+        body { 
+            background: #111;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.03) 1px, rgba(255,255,255,0.03) 2px),
+                linear-gradient(90deg, #111, #222, #111);
+            color: #fff; font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh;
+        }
+        .container { 
+            border: 1px solid #444; padding: 30px; border-radius: 8px; background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+            width: 100%; max-width: 850px; box-shadow: 10px 10px 20px #000, -5px -5px 15px #222; border-top: 3px solid #FF0000;
+        }
+        .header-brand { text-align: center; margin-bottom: 20px; }
+        .company-name { color: #FF0000; font-size: 2.4em; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; margin: 0; text-shadow: 2px 2px 4px #000; }
+        .tool-name { color: #FFA500; font-size: 1.5em; font-weight: bold; margin: 5px 0 15px 0; letter-spacing: 1.5px; text-shadow: 1px 1px 3px #000; }
+
+        /* Calibration Section */
+        .cal-module { background: rgba(255, 165, 0, 0.05); border: 1px solid #FFA500; border-radius: 6px; padding: 15px; margin-bottom: 20px; }
+        .cal-header { color: #FFA500; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .cal-warning { color: #ff4d4d; font-size: 0.8em; font-style: italic; margin-bottom: 10px; display: block; line-height: 1.2; }
+
+        .clk-module { border: 1px solid #333; padding: 15px; border-radius: 6px; background: rgba(0,0,0,0.3); margin-bottom: 20px; border-left: 4px solid #8b0000; }
+        .clk-header { color: #FFA500; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        
+        label { display: block; margin-bottom: 5px; color: #ff4d4d; font-size: 0.75em; font-weight: bold; text-transform: uppercase; }
+        select, input { width: 100%; padding: 10px; background: #222; border: 1px solid #8b0000; color: #fff; border-radius: 4px; box-sizing: border-box; font-size: 0.9em; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .custom-fields { margin-top: 15px; padding: 10px; border-top: 1px dashed #444; display: none; background: rgba(139, 0, 0, 0.05); }
+        .btn { width: 100%; padding: 18px; background: linear-gradient(#8b0000, #4a0000); color: white; border: 1px solid #000; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 1.1em; text-transform: uppercase; transition: 0.2s; }
+        .prog-btn { background: linear-gradient(#006400, #003300) !important; margin-top: 20px; }
+        .btn:disabled { background: #333; color: #666; cursor: not-allowed; border: 1px solid #222; }
+        
+        .output-val { color: #00ff00; font-family: monospace; font-size: 1.2em; background: #000; padding: 4px 10px; border-radius: 3px; border: 1px solid #003300; min-width: 140px; text-align: center; }
+        .status { font-size: 0.8em; margin-top: 20px; color: #666; text-align: center; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-brand">
+        <p class="company-name">Custom Communications</p>
+        <p class="tool-name">VFO Configuration Tool</p>
+    </div>
+
+    <div class="cal-module">
+        <div class="cal-header">Si5351 Master Calibration</div>
+        <small class="cal-warning">** NOTE: Leave offset at 0 until after initial testing and verification from radio. Use this section only if you need to change the frequency slightly.</small>
+        
+        <div class="grid">
+            <div class="form-group">
+                <label>Master Crystal Offset (Hz)</label>
+                <input type="number" id="masterOffset" value="0" oninput="calculateAll()">
+            </div>
+            <div style="border-left: 1px solid #444; padding-left: 10px;">
+                <label style="color: #FFA500;">Carrier Error Calculator</label>
+                <div class="grid">
+                    <input type="number" id="targetF" placeholder="What it should be" step="0.0001" style="font-size: 0.75em;">
+                    <input type="number" id="actualF" placeholder="What it actually is" step="0.0001" style="font-size: 0.75em;">
+                </div>
+                <button onclick="applyCalc()" style="font-size: 0.7em; margin-top: 5px; background: #333; color: #fff; border: 1px solid #FFA500; cursor: pointer; padding: 5px; width: 100%;">APPLY CORRECTION</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="clock-container"></div>
+
+    <button id="connectBtn" class="btn">Step 1: Connect Radio Hardware</button>
+    <button id="uploadBtn" class="btn prog-btn" disabled>Step 2: Program All Clocks</button>
+    
+    <div id="statusMsg" class="status">System Status: Waiting for Hardware...</div>
+</div>
+
+<script>
+    const radioData = [
+        { name: "-- LEAVE BLANK / OFF --", mult_rx: 0, if: 0, mult_tx: 0, inj: "low" },
+        { name: "-- CUSTOM / MANUAL ENTRY --", mult_rx: 1, if: 0, mult_tx: 1, inj: "low" },
+        { name: "Motorola Micor UHF Mobile (Rep Mod)", mult_rx: 24, if: 11.7, mult_tx: 24, inj: "low" },
+        { name: "Motorola Micor UHF Base Station", mult_rx: 24, if: 11.7, mult_tx: 36, inj: "low" },
+        { name: "Motorola Micor VHF", mult_rx: 3, if: 11.7, mult_tx: 12, inj: "low" },
+        { name: "Motorola Mitrek / MSR2000 VHF", mult_rx: 3, if: 10.7, mult_tx: 12, inj: "low" },
+        { name: "Motorola Mitrek / MSR2000 UHF", mult_rx: 9, if: 10.7, mult_tx: 36, inj: "low" },
+        { name: "Motorola Maxar / Moxy VHF", mult_rx: 3, if: 10.7, mult_tx: 12, inj: "low" },
+        { name: "Motorola Maxar / Moxy UHF", mult_rx: 8, if: 21.4, mult_tx: 27, inj: "low" },
+        { name: "GE Mastr II / Exec II VHF", mult_rx: 9, if: 11.2, mult_tx: 12, inj: "low" },
+        { name: "GE Mastr II / Exec II UHF", mult_rx: 27, if: 11.2, mult_tx: 36, inj: "low" },
+        { name: "Midland 13-500 Series (2m)", mult_rx: 3, if: 10.7, mult_tx: 12, inj: "low" },
+        { name: "Midland 13-509 (220 MHz)", mult_rx: 4, if: 10.7, mult_tx: 12, inj: "low" },
+        { name: "Luiton / CB (10.695 IF)", mult_rx: 1, if: 10.695, mult_tx: 1, inj: "low" }
+    ];
+
+    const clockContainer = document.getElementById('clock-container');
+
+    for (let i = 0; i < 3; i++) {
+        clockContainer.innerHTML += `
+            <div class="clk-module">
+                <div class="clk-header"><span>CLOCK ${i}</span> <span id="out${i}" class="output-val">OFF</span></div>
+                <div class="form-group">
+                    <label>Radio Profile</label>
+                    <select id="sel${i}" onchange="toggleCustom(${i})"></select>
+                </div>
+                <div class="grid">
+                    <div class="form-group"><label>Carrier (MHz)</label><input type="number" id="car${i}" placeholder="0.000" step="0.0001" oninput="calculateAll()"></div>
+                    <div class="form-group"><label>Mode</label><select id="mode${i}" onchange="calculateAll()"><option value="rx">RX</option><option value="tx">TX</option></select></div>
+                </div>
+                <div id="customArea${i}" class="custom-fields">
+                    <div class="grid">
+                        <div class="form-group"><label>Multiplier</label><input type="number" id="mult${i}" value="1" oninput="calculateAll()"></div>
+                        <div class="form-group"><label>IF Freq (MHz)</label><input type="number" id="if${i}" value="0" step="0.0001" oninput="calculateAll()"></div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    for (let i = 0; i < 3; i++) {
+        const s = document.getElementById(`sel${i}`);
+        radioData.forEach((r, idx) => {
+            let opt = document.createElement('option');
+            opt.value = idx; opt.innerHTML = r.name;
+            s.appendChild(opt);
+        });
+    }
+
+    function applyCalc() {
+        const target = parseFloat(document.getElementById('targetF').value);
+        const actual = parseFloat(document.getElementById('actualF').value);
+        if (!isNaN(target) && !isNaN(actual)) {
+            const errorHz = Math.round((target - actual) * 1000000);
+            document.getElementById('masterOffset').value = errorHz;
+            calculateAll();
+        }
+    }
+
+    function toggleCustom(clk) {
+        const val = document.getElementById(`sel${clk}`).value;
+        document.getElementById(`customArea${clk}`).style.display = (val == 1) ? "block" : "none";
+        calculateAll();
+    }
+
+    function calculate(clk) {
+        const profileIdx = document.getElementById(`sel${clk}`).value;
+        const carrier = parseFloat(document.getElementById(`car${clk}`).value);
+        const mode = document.getElementById(`mode${clk}`).value;
+        const masterOff = parseInt(document.getElementById('masterOffset').value) || 0;
+        const outSpan = document.getElementById(`out${clk}`);
+
+        if (profileIdx == 0 || isNaN(carrier) || carrier === 0) {
+            outSpan.innerText = "OFF"; return 0;
+        }
+
+        let mult, if_f;
+        if (profileIdx == 1) {
+            mult = parseFloat(document.getElementById(`mult${clk}`).value);
+            if_f = 0;
+        } else {
+            const r = radioData[profileIdx];
+            mult = (mode === 'rx') ? r.mult_rx : r.mult_tx;
+            if_f = r.if;
+        }
+
+        let result = (mode === 'rx') ? (carrier - if_f) / mult : carrier / mult;
+        let finalHz = (result * 1000000) + masterOff;
+        outSpan.innerText = (finalHz / 1000000).toFixed(6) + " MHz";
+        return finalHz;
+    }
+
+    function calculateAll() { for (let i = 0; i < 3; i++) calculate(i); }
+
+    let port;
+    document.getElementById('connectBtn').onclick = async () => {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 115200 });
+            document.getElementById('statusMsg').innerText = "Status: Hardware Ready";
+            document.getElementById('uploadBtn').disabled = false;
+        } catch (err) { }
+    };
+
+    document.getElementById('uploadBtn').onclick = async () => {
+        const hzs = [calculate(0), calculate(1), calculate(2)];
+        const encoder = new TextEncoder();
+        const writer = port.writable.getWriter();
+        const cmd = `SET:${Math.round(hzs[0])},${Math.round(hzs[1])},${Math.round(hzs[2])}\n`;
+        await writer.write(encoder.encode(cmd));
+        writer.releaseLock();
+        alert("Frequencies Programmed!");
+    };
+
+    calculateAll();
+</script>
+</body>
+<div style="background: #222; width: 100%; padding: 10px 0; border-bottom: 1px solid #444; margin-bottom: 20px; text-align: center;">
+    <a href="flasher.html" style="color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif;">[ 1. FIRMWARE FLASHER ]</a>
+    <a href="configurator.html" style="color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif;">[ 2. RADIO CONFIGURATOR ]</a>
+</div>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Custom Communications - CRV Flasher</title>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <style>
+        body { 
+            background: #111;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.03) 1px, rgba(255,255,255,0.03) 2px),
+                linear-gradient(90deg, #111, #222, #111);
+            color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 40px; min-height: 100vh;
+        }
+        .container { 
+            border: 1px solid #444; padding: 30px; border-radius: 8px; background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+            width: 100%; max-width: 500px; box-shadow: 10px 10px 20px #000; border-top: 3px solid #FF0000; text-align: center;
+        }
+        .company-name { color: #FF0000; font-size: 2em; font-weight: bold; text-transform: uppercase; margin: 0; }
+        .tool-name { color: #FFA500; font-size: 1.2em; font-weight: bold; margin-bottom: 20px; }
+        
+        /* Status Indicator Styles */
+        .status-bar {
+            background: #222; border: 1px solid #333; padding: 10px; border-radius: 4px; 
+            margin-bottom: 20px; font-size: 0.8em; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; background: #555; }
+        .online { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
+        .offline { background: #ff0000; box-shadow: 0 0 8px #ff0000; }
+
+        esp-web-install-button {
+            --esp-tools-button-color: #8b0000;
+            --esp-tools-button-text-color: #ffffff;
+            margin-top: 20px;
+        }
+        .custom-btn {
+            padding: 15px 35px; background: #8b0000; color: white; border: 1px solid #444; 
+            border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="company-name">Custom Communications</p>
+        <p class="tool-name">CRV Firmware Dashboard</p>
+
+        <div class="status-bar">
+            <span id="statusDot" class="dot"></span>
+            <span id="statusText">Checking local manifest...</span>
+        </div>
+
+        <p>Connect your radio hardware via USB and click the button below to begin the update process.</p>
+        
+        <esp-web-install-button manifest="./manifest.json">
+            <button slot="activate" class="custom-btn">Start CRV Flash</button>
+        </esp-web-install-button>
+    </div>
+
+    <script>
+        // Simple check to see if manifest.json is reachable on the local server
+        async function checkManifest() {
+            try {
+                const response = await fetch('./manifest.json');
+                if (response.ok) {
+                    document.getElementById('statusDot').className = 'dot online';
+                    document.getElementById('statusText').innerText = 'Local Manifest: READY';
+                    document.getElementById('statusText').style.color = '#00ff00';
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                document.getElementById('statusDot').className = 'dot offline';
+                document.getElementById('statusText').innerText = 'Local Manifest: NOT FOUND';
+                document.getElementById('statusText').style.color = '#ff4d4d';
+            }
+        }
+        
+        // Run check on load
+        window.onload = checkManifest;
+    </script>
+</body>
+<div style="background: #222; width: 100%; padding: 10px 0; border-bottom: 1px solid #444; margin-bottom: 20px; text-align: center;">
+    <a href="flasher.html" style="color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif;">[ 1. FIRMWARE FLASHER ]</a>
+    <a href="configurator.html" style="color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif;">[ 2. RADIO CONFIGURATOR ]</a>
+</div>
+</html>
