@@ -17,11 +17,13 @@
             border: 1px solid #444; padding: 30px; border-radius: 8px; background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
             width: 100%; max-width: 850px; box-shadow: 10px 10px 20px #000, -5px -5px 15px #222; border-top: 3px solid #FF0000;
         }
+        .nav { background: #222; width: 100%; padding: 10px 0; border-bottom: 1px solid #444; margin-bottom: 20px; text-align: center; border-radius: 4px; }
+        .nav a { color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif; font-size: 0.9em; }
+        
         .header-brand { text-align: center; margin-bottom: 20px; }
         .company-name { color: #FF0000; font-size: 2.4em; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; margin: 0; text-shadow: 2px 2px 4px #000; }
         .tool-name { color: #FFA500; font-size: 1.5em; font-weight: bold; margin: 5px 0 15px 0; letter-spacing: 1.5px; text-shadow: 1px 1px 3px #000; }
 
-        /* Calibration Section */
         .cal-module { background: rgba(255, 165, 0, 0.05); border: 1px solid #FFA500; border-radius: 6px; padding: 15px; margin-bottom: 20px; }
         .cal-header { color: #FFA500; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 5px; }
         .cal-warning { color: #ff4d4d; font-size: 0.8em; font-style: italic; margin-bottom: 10px; display: block; line-height: 1.2; }
@@ -33,8 +35,11 @@
         select, input { width: 100%; padding: 10px; background: #222; border: 1px solid #8b0000; color: #fff; border-radius: 4px; box-sizing: border-box; font-size: 0.9em; }
         
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+        
         .custom-fields { margin-top: 15px; padding: 10px; border-top: 1px dashed #444; display: none; background: rgba(139, 0, 0, 0.05); }
         .btn { width: 100%; padding: 18px; background: linear-gradient(#8b0000, #4a0000); color: white; border: 1px solid #000; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 1.1em; text-transform: uppercase; transition: 0.2s; }
+        .read-btn { background: linear-gradient(#444, #222) !important; margin-top: 10px; }
         .prog-btn { background: linear-gradient(#006400, #003300) !important; margin-top: 20px; }
         .btn:disabled { background: #333; color: #666; cursor: not-allowed; border: 1px solid #222; }
         
@@ -44,6 +49,11 @@
 </head>
 <body>
 
+<div class="nav">
+    <a href="flasher.html">[ 1. FIRMWARE FLASHER ]</a>
+    <a href="configurator.html" style="background: #333; padding: 5px 10px; border-radius: 4px; border: 1px solid #FFA500;">[ 2. RADIO CONFIGURATOR ]</a>
+</div>
+
 <div class="container">
     <div class="header-brand">
         <p class="company-name">Custom Communications</p>
@@ -52,7 +62,7 @@
 
     <div class="cal-module">
         <div class="cal-header">Si5351 Master Calibration</div>
-        <small class="cal-warning">** NOTE: Leave offset at 0 until after initial testing and verification from radio. Use this section only if you need to change the frequency slightly.</small>
+        <small class="cal-warning">** NOTE: Leave offset at 0 until after initial testing and verification from radio.</small>
         
         <div class="grid">
             <div class="form-group">
@@ -62,8 +72,8 @@
             <div style="border-left: 1px solid #444; padding-left: 10px;">
                 <label style="color: #FFA500;">Carrier Error Calculator</label>
                 <div class="grid">
-                    <input type="number" id="targetF" placeholder="What it should be" step="0.0001" style="font-size: 0.75em;">
-                    <input type="number" id="actualF" placeholder="What it actually is" step="0.0001" style="font-size: 0.75em;">
+                    <input type="number" id="targetF" placeholder="Target" step="0.0001" style="font-size: 0.75em;">
+                    <input type="number" id="actualF" placeholder="Actual" step="0.0001" style="font-size: 0.75em;">
                 </div>
                 <button onclick="applyCalc()" style="font-size: 0.7em; margin-top: 5px; background: #333; color: #fff; border: 1px solid #FFA500; cursor: pointer; padding: 5px; width: 100%;">APPLY CORRECTION</button>
             </div>
@@ -73,7 +83,8 @@
     <div id="clock-container"></div>
 
     <button id="connectBtn" class="btn">Step 1: Connect Radio Hardware</button>
-    <button id="uploadBtn" class="btn prog-btn" disabled>Step 2: Program All Clocks</button>
+    <button id="readBtn" class="btn read-btn" disabled>Step 2: Read from Radio</button>
+    <button id="uploadBtn" class="btn prog-btn" disabled>Step 3: Program All Clocks</button>
     
     <div id="statusMsg" class="status">System Status: Waiting for Hardware...</div>
 </div>
@@ -106,9 +117,18 @@
                     <label>Radio Profile</label>
                     <select id="sel${i}" onchange="toggleCustom(${i})"></select>
                 </div>
-                <div class="grid">
+                <div class="grid-3">
                     <div class="form-group"><label>Carrier (MHz)</label><input type="number" id="car${i}" placeholder="0.000" step="0.0001" oninput="calculateAll()"></div>
                     <div class="form-group"><label>Mode</label><select id="mode${i}" onchange="calculateAll()"><option value="rx">RX</option><option value="tx">TX</option></select></div>
+                    <div class="form-group">
+                        <label>Drive Level</label>
+                        <select id="drive${i}" onchange="calculateAll()">
+                            <option value="2">2 mA</option>
+                            <option value="4" selected>4 mA</option>
+                            <option value="6">6 mA</option>
+                            <option value="8">8 mA</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="customArea${i}" class="custom-fields">
                     <div class="grid">
@@ -173,31 +193,75 @@
 
     function calculateAll() { for (let i = 0; i < 3; i++) calculate(i); }
 
-    let port;
+    let port, writer;
+
     document.getElementById('connectBtn').onclick = async () => {
         try {
             port = await navigator.serial.requestPort();
             await port.open({ baudRate: 115200 });
             document.getElementById('statusMsg').innerText = "Status: Hardware Ready";
             document.getElementById('uploadBtn').disabled = false;
+            document.getElementById('readBtn').disabled = false;
+            readSerial();
         } catch (err) { }
+    };
+
+    async function readSerial() {
+        const textDecoder = new TextDecoderStream();
+        port.readable.pipeTo(textDecoder.writable);
+        const reader = textDecoder.readable.getReader();
+        try {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                if (value) {
+                    try {
+                        const data = JSON.parse(value);
+                        // Map incoming JSON to fields
+                        for (let i = 0; i < 3; i++) {
+                            if(data[`c${i}`]) document.getElementById(`car${i}`).value = data[`c${i}`];
+                            if(data[`d${i}`]) document.getElementById(`drive${i}`).value = data[`d${i}`];
+                            if(data[`m${i}`]) document.getElementById(`mode${i}`).value = data[`m${i}`];
+                        }
+                        if(data.mo) document.getElementById('masterOffset').value = data.mo;
+                        calculateAll();
+                        document.getElementById('statusMsg').innerText = "Status: Settings Loaded from Device";
+                    } catch (e) {}
+                }
+            }
+        } catch (err) {}
+    }
+
+    document.getElementById('readBtn').onclick = async () => {
+        const encoder = new TextEncoder();
+        writer = port.writable.getWriter();
+        await writer.write(encoder.encode("READ\n"));
+        writer.releaseLock();
     };
 
     document.getElementById('uploadBtn').onclick = async () => {
         const hzs = [calculate(0), calculate(1), calculate(2)];
+        const drives = [
+            document.getElementById('drive0').value,
+            document.getElementById('drive1').value,
+            document.getElementById('drive2').value
+        ];
+        
+        const config = {
+            cmd: "SET",
+            hz: hzs.map(h => Math.round(h)),
+            dr: drives.map(d => parseInt(d)),
+            mo: parseInt(document.getElementById('masterOffset').value)
+        };
+
         const encoder = new TextEncoder();
-        const writer = port.writable.getWriter();
-        const cmd = `SET:${Math.round(hzs[0])},${Math.round(hzs[1])},${Math.round(hzs[2])}\n`;
-        await writer.write(encoder.encode(cmd));
+        writer = port.writable.getWriter();
+        await writer.write(encoder.encode(JSON.stringify(config) + "\n"));
         writer.releaseLock();
-        alert("Frequencies Programmed!");
+        alert("Frequencies and Drive Levels Programmed!");
     };
 
     calculateAll();
 </script>
 </body>
-<div style="background: #222; width: 100%; padding: 10px 0; border-bottom: 1px solid #444; margin-bottom: 20px; text-align: center;">
-    <a href="flasher.html" style="color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif;">[ 1. FIRMWARE FLASHER ]</a>
-    <a href="configurator.html" style="color: #FFA500; text-decoration: none; margin: 0 20px; font-weight: bold; font-family: sans-serif;">[ 2. RADIO CONFIGURATOR ]</a>
-</div>
 </html>
